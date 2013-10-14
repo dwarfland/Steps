@@ -3,6 +3,7 @@
 interface
 
 uses
+  CoreMotion,
   Foundation,
   TwinPeaks,
   UIKit;
@@ -11,6 +12,7 @@ type
   [IBObject]
   RootViewController = public class (UITableViewController)
   private
+    fKeys: NSArray;
     method newSteps(notification: NSNotification);
     method newStepsToday(notification: NSNotification);
     method refresh(sender: id);
@@ -75,6 +77,7 @@ end;
 
 method RootViewController.newSteps(notification: NSNotification);
 begin
+  fKeys := AppDelegate.instance:Data:allKeys:sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(false)]);
   tableView.reloadData();
 end;
 
@@ -93,19 +96,14 @@ end;
 
 method RootViewController.tableView(tableView: UITableView) numberOfRowsInSection(section: Integer): Integer;
 begin
-  result := AppDelegate.instance.Data:count;
+  result := fKeys:count;
 end;
 
 method RootViewController.tableView(tableView: UITableView) cellForRowAtIndexPath(indexPath: NSIndexPath): UITableViewCell;
 begin
-  //var CellIdentifier := StepsCellView.class.description;
-  //result := tableView.dequeueReusableCellWithIdentifier(CellIdentifier);
-
-  //if not assigned(result) then
   result := new BaseCell withStyle(UITableViewCellStyle.UITableViewCellStyleSubtitle) viewClass(StepsCellView.class);
-  var lKeys :=  AppDelegate.instance.Data.allKeys.sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(NO)]);
 
-  var lKey := lKeys[indexPath.row];
+  var lKey := fKeys[indexPath.row];
   //result.textLabel.text := AppDelegate.instance.Data[lKey].stringValue;
 
   var lView := (result as BaseCell).view as StepsCellView;

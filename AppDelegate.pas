@@ -19,12 +19,16 @@ type
     method save; locked on self;
 
     const FETCH_INTERVAL = 60 * 60 * 12; //twice a day
+
+    const KEY_STEP_DATA_BY_DATE = 'StepDataByDate';
+    const KEY_LAST_FINISHED_DAY = 'DateOfLastFinishedDay';
   public
     property window: UIWindow;
 
     property daybreak: Int32 := 4; // 4:00 AM
 
     property Data: NSMutableDictionary;
+    property LastFinishedDay: NSDate;
 
     class property instance: AppDelegate;
 
@@ -122,17 +126,17 @@ end;
 
 method AppDelegate.LoadData;
 begin
-
   var lHomeFolder := NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.NSDocumentDirectory, NSSearchPathDomainMask.NSUserDomainMask, true):objectAtIndex(0);
   fDataFileName := lHomeFolder.stringByAppendingPathComponent('StepData.plist');
   if not NSFileManager.defaultManager.createDirectoryAtPath(lHomeFolder) withIntermediateDirectories(true) attributes(nil) error(nil) then
     NSLog('eror crearing documents folder%@', lHomeFolder);
 
   if NSFileManager.defaultManager.fileExistsAtPath(fDataFileName) then begin
-
     var lData := new NSData withContentsOfFile(fDataFileName);
     var lUnarchiver := new NSKeyedUnarchiver forReadingWithData(lData);
-    Data := lUnarchiver.decodeObjectForKey('StepDataByDate').mutableCopy();
+    Data := lUnarchiver.decodeObjectForKey(KEY_STEP_DATA_BY_DATE).mutableCopy();
+    LastFinishedDay := lUnarchiver.decodeObjectForKey(KEY_LAST_FINISHED_DAY);
+    NSLog('LastFinishedDay %@', LastFinishedDay);
     lUnarchiver.finishDecoding();
   end;
   
@@ -184,16 +188,17 @@ begin
   end;
   var lEnd := lNow;
 
+  var lNewLastFinishedDay := lMorning;
+
   var lCount := 0;
   while (lCount < 10) do begin
-    NSLog('morning: %@', lMorning);
+
+    if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then exit;
+    NSLog('getting: %@ - %@', lMorning, lEnd);
 
     var lDayComponents := lCalendar.components(lDayUnitFlags) fromDate(lMorning); 
     var lDay := lCalendar.dateFromComponents(lDayComponents);
-    // NSLog('day: %@', lDay);
 
-    if (lCount > 0) and assigned(Data[lDay]) then break; 
-    
     fCounter.queryStepCountStartingFrom(lMorning) 
              &to(lEnd)
              toQueue(fQueue)
@@ -201,27 +206,40 @@ begin
                            NSLog('%@ - %ld', lDay, numberOfSteps);
                            Data[lDay] := numberOfSteps;
                            dispatch_async(dispatch_get_main_queue(), method begin 
-                                                                       NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self); 
-                                                                       if assigned(aCompletion) then aCompletion();
+                                                                       NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
+                                                                      
+                                                                       if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then
+                                                                         if assigned(aCompletion) then aCompletion();
                                                                        save();
                                                                      end);
                          end);
-
-    if assigned(aCompletion) then break; // for now: only load one, when we are launched from background
 
     lEnd := lMorning;
     lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
 
     inc(lCount);
-
   end;
+
+  // clean up the last days w/o data
+  {var lKeys := Data.allKeys.sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(true)]);
+  for each k in lKeys do begin
+    if Data[k].integerValue > 0 then break;
+    Data.removeObjectForKey(k);
+  end;
+  NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);}
+
+  LastFinishedDay := lNewLastFinishedDay;
+  NSLog('last finished day %@', LastFinishedDay);
+  save();
 end;
 
 method AppDelegate.save;
 begin
   var lData := new NSMutableData;
   var lArchiver := new NSKeyedArchiver forWritingWithMutableData(lData);
-  lArchiver.encodeObject(Data) forKey('StepDataByDate');
+  lArchiver.encodeObject(Data) forKey(KEY_STEP_DATA_BY_DATE);
+  if assigned(LastFinishedDay) then
+    lArchiver.encodeObject(LastFinishedDay) forKey(KEY_LAST_FINISHED_DAY);
   lArchiver.finishEncoding();
 
   if lData.writeToFile(fDataFileName) atomically(YES) then
