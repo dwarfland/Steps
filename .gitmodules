@@ -1,0 +1,4 @@
+[submodule "TwinPeaks"]
+	path = TwinPeaks
+	url = git@github.com:remobjects/TwinPeaks.git
+	branch = master
