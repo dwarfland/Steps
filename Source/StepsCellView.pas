@@ -8,7 +8,7 @@ uses
 
 type
   [IBObject]
-  StepsCellView = public class(BaseCell)
+  StepsCellView = public class(TPBaseCell)
   private
   public
     method initWithFrame(aFrame: CGRect): id; override;

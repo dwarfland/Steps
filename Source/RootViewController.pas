@@ -101,12 +101,12 @@ end;
 
 method RootViewController.tableView(tableView: UITableView) cellForRowAtIndexPath(indexPath: NSIndexPath): UITableViewCell;
 begin
-  result := new BaseCell withStyle(UITableViewCellStyle.UITableViewCellStyleSubtitle) viewClass(StepsCellView.class);
+  result := new TPBaseCell withStyle(UITableViewCellStyle.UITableViewCellStyleSubtitle) viewClass(StepsCellView.class);
 
   var lKey := fKeys[indexPath.row];
   //result.textLabel.text := AppDelegate.instance.Data[lKey].stringValue;
 
-  var lView := (result as BaseCell).view as StepsCellView;
+  var lView := (result as TPBaseCell).view as StepsCellView;
   lView.steps := AppDelegate.instance.Data[lKey];
   lView.date := lKey;
   lView.first := indexPath.row = 0;
