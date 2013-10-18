@@ -67,8 +67,8 @@
     <Compile Include="RootViewController.pas" />
     <Compile Include="Program.pas" />
     <Compile Include="StepsCellView.pas" />
-    <Compile Include="V:\git\Steps\TwinPeaks\iOS\Oxygene\TPBaseCell.pas" />
-    <Compile Include="V:\git\Steps\TwinPeaks\iOS\Oxygene\TPBaseCellView.pas" />
+    <Compile Include="..\TwinPeaks\iOS\Oxygene\TPBaseCell.pas" />
+    <Compile Include="..\TwinPeaks\iOS\Oxygene\TPBaseCellView.pas" />
   </ItemGroup>
   <ItemGroup>
     <AppResource Include="Resources\App Icons\App-120.png">
