@@ -10,7 +10,7 @@ uses
 
 type
   [IBObject]
-  RootViewController = public class (UITableViewController)
+  RootViewController = public class (UITableViewController, IUITableViewDelegate)
   private
     fKeys: NSArray;
     method newSteps(notification: NSNotification);
@@ -25,6 +25,7 @@ type
     {$REGION Table view data source}
     method numberOfSectionsInTableView(tableView: UITableView): Integer;
     method tableView(tableView: UITableView) numberOfRowsInSection(section: Integer): Integer;
+    method tableView(tableView: UITableView) heightForRowAtIndexPath(indexPath: NSIndexPath): CGFloat;
     method tableView(tableView: UITableView) cellForRowAtIndexPath(indexPath: NSIndexPath): UITableViewCell;
 
     method tableView(tableView: UITableView) canMoveRowAtIndexPath(indexPath: NSIndexPath): Boolean;
@@ -86,7 +87,6 @@ begin
 
 end;
 
-
 {$REGION Table view data source}
 
 method RootViewController.numberOfSectionsInTableView(tableView: UITableView): Integer;
@@ -97,6 +97,12 @@ end;
 method RootViewController.tableView(tableView: UITableView) numberOfRowsInSection(section: Integer): Integer;
 begin
   result := fKeys:count;
+end;
+
+method RootViewController.tableView(tableView: UITableView) heightForRowAtIndexPath(indexPath: NSIndexPath): CGFloat;
+begin
+  result := inherited;
+  if indexPath.row = 0 then result := result*2.5;
 end;
 
 method RootViewController.tableView(tableView: UITableView) cellForRowAtIndexPath(indexPath: NSIndexPath): UITableViewCell;
@@ -110,6 +116,7 @@ begin
   lView.steps := AppDelegate.instance.Data[lKey];
   lView.date := lKey;
   lView.first := indexPath.row = 0;
+  lView.best :=  lView.steps.isEqualToNumber(AppDelegate.instance.best);
 
   //result.detailTextLabel.text := lKey.description;
 end;

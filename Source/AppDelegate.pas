@@ -17,6 +17,7 @@ type
     method StepsQueryHandler(numberOfSteps: NSInteger; error: NSError);
     method StepsUpdateHandler(numberOfSteps: NSInteger;  timestamp: NSDate; error: NSError);
     method save; locked on self;
+    method updateStatictics;
 
     const FETCH_INTERVAL = 60 * 60 * 12; //twice a day
 
@@ -28,7 +29,12 @@ type
     property daybreak: Int32 := 4; // 4:00 AM
 
     property Data: NSMutableDictionary;
+    property best: NSNumber;
+    property weeklyAverage: NSNumber;
+    property monthlyAverage: NSNumber;
+
     property LastFinishedDay: NSDate;
+
 
     class property instance: AppDelegate;
 
@@ -64,7 +70,8 @@ begin
   var lNavigationController := new UINavigationController withRootViewController(new RootViewController);
   
   lNavigationController.navigationBar.tintColor := UIColor.colorWithRed(0.8) green(0.8) blue(1.0) alpha(1.0);
-  lNavigationController.navigationBar.barTintColor := UIColor.colorWithRed(0.0) green(0.0) blue(0.5) alpha(1.0);
+  //lNavigationController.navigationBar.barTintColor := UIColor.colorWithRed(0.0) green(0.0) blue(0.5) alpha(1.0);// somehowe the logic for this changed in 7.0.3?
+  lNavigationController.navigationBar.barTintColor := UIColor.colorWithRed(83.0/256.0) green(83.0/256.0) blue(166.0/256.0) alpha(1.0);
   
   var lAttributes := new NSMutableDictionary;
   lAttributes[NSForegroundColorAttributeName] :=  UIColor.colorWithRed(1.0) green(1.0) blue(1.0) alpha(1.0);
@@ -206,6 +213,7 @@ begin
                            NSLog('%@ - %ld', lDay, numberOfSteps);
                            Data[lDay] := numberOfSteps;
                            dispatch_async(dispatch_get_main_queue(), method begin 
+                                                                       updateStatictics();
                                                                        NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
                                                                       
                                                                        if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then
@@ -231,6 +239,28 @@ begin
   LastFinishedDay := lNewLastFinishedDay;
   NSLog('last finished day %@', LastFinishedDay);
   save();
+end;
+
+method AppDelegate.updateStatictics;
+begin
+  best := Data.allValues.valueForKeyPath('@max.self');
+
+  var lWeek := new NSMutableArray;
+  var lMonth := new NSMutableArray;
+
+  var lKeys := AppDelegate.instance:Data:allKeys:sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(false)]);
+  for each k in lKeys index i do begin
+    if i ≥ 30 then break;
+    var lData := Data[k];
+    if not assigned(lData) or (lData.intValue = 0) then continue;
+    if i < 7 then lWeek.addObject(lData);
+    if i < 30 then lMonth.addObject(lData);
+  end;
+
+  weeklyAverage := lWeek.valueForKeyPath('@avg.self').intValue;
+  monthlyAverage := lMonth.valueForKeyPath('@avg.self').intValue;
+
+  //NSLOg('best: %@', Best);
 end;
 
 method AppDelegate.save;

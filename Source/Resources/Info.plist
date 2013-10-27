@@ -2,7 +2,7 @@
 <plist version="1.0">
 	<dict>
 		<key>CFBundleVersion</key>
-		<string>1.0</string>
+		<string>1.1</string>
 		<key>CFBundleIcons</key>
 		<dict>
 			<key>CFBundlePrimaryIcon</key>
@@ -19,6 +19,8 @@
 		</array>
 		<key>UIViewControllerBasedStatusBarAppearance</key>
 		<false/>
+		<key>UIStatusBarStyle</key>
+		<string>UIStatusBarStyleLightContent</string>
 		<key>UIStatusBarTintParameters</key>
 		<dict>
 			<key>UINavigationBar</key>
