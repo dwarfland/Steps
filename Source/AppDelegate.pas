@@ -186,11 +186,11 @@ begin
   lComponents4AM.hour := 4;
 
   var lMorning := lCalendar.dateFromComponents(lComponents4AM);
-  NSLog('now: %@', lNow);
-  NSLog('morning: %@', lMorning);
+  // NSLog('now: %@', lNow);
+  // NSLog('morning: %@', lMorning);
 
   if lComponents.hour < daybreak then begin
-    NSLog('it''s still yesterday');
+    //NSLog('it''s still yesterday');
     lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
   end;
   var lEnd := lNow;
@@ -200,8 +200,11 @@ begin
   var lCount := 0;
   while (lCount < 10) do begin
 
-    if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then exit;
-    NSLog('getting: %@ - %@', lMorning, lEnd);
+    if assigned(LastFinishedDay) and (lEnd.compare(LastFinishedDay) in [NSComparisonResult.NSOrderedSame, NSComparisonResult.NSOrderedAscending]) then begin
+      //NSLog('stopping');
+      break;
+    end;
+    //NSLog('getting: %@ - %@ (%@)', lMorning, lEnd, LastFinishedDay);
 
     var lDayComponents := lCalendar.components(lDayUnitFlags) fromDate(lMorning); 
     var lDay := lCalendar.dateFromComponents(lDayComponents);
@@ -210,8 +213,11 @@ begin
              &to(lEnd)
              toQueue(fQueue)
              withHandler(method (numberOfSteps: NSInteger; error: NSError) begin
-                           NSLog('%@ - %ld', lDay, numberOfSteps);
-                           Data[lDay] := numberOfSteps;
+                           //NSLog('%@ - %ld', lDay, numberOfSteps);
+                           if (not assigned( Data[lDay])) or (Data[lDay].integerValue < numberOfSteps) then
+                             Data[lDay] := numberOfSteps;
+                           //else
+                             //NSLog('skipped updating %@ (%d)', lDay, numberOfSteps);
                            dispatch_async(dispatch_get_main_queue(), method begin 
                                                                        updateStatictics();
                                                                        NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
@@ -237,7 +243,7 @@ begin
   NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);}
 
   LastFinishedDay := lNewLastFinishedDay;
-  NSLog('last finished day %@', LastFinishedDay);
+  //NSLog('set last finished day to %@', LastFinishedDay);
   save();
 end;
 
