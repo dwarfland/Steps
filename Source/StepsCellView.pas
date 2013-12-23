@@ -100,7 +100,7 @@ begin
   end;
   
   var lStepString := steps.stringValue;
-  if best then lStepString := '☆ '+lStepString;
+  if best and not first then lStepString := '☆ '+lStepString;
   
   var lStepSize := lStepString.sizeWithAttributes(lStepAttributes); 
 	var lStepFrame := CGRectMake(f.size.width-5-lStepSize.width, 5.0, lStepSize.width, lStepSize.height);
