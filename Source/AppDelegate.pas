@@ -13,6 +13,7 @@ type
     fQueue: NSOperationQueue := new NSOperationQueue;
     fCounter: CMStepCounter;
     fDataFileName: NSString;
+    fLoadingNewData: Boolean;
 
     method StepsQueryHandler(numberOfSteps: NSInteger; error: NSError);
     method StepsUpdateHandler(numberOfSteps: NSInteger;  timestamp: NSDate; error: NSError);
@@ -138,12 +139,14 @@ begin
   if not NSFileManager.defaultManager.createDirectoryAtPath(lHomeFolder) withIntermediateDirectories(true) attributes(nil) error(nil) then
     NSLog('eror crearing documents folder%@', lHomeFolder);
 
-  if NSFileManager.defaultManager.fileExistsAtPath(fDataFileName) then begin
+    if NSFileManager.defaultManager.fileExistsAtPath(fDataFileName) then begin
     var lData := new NSData withContentsOfFile(fDataFileName);
     var lUnarchiver := new NSKeyedUnarchiver forReadingWithData(lData);
-    Data := lUnarchiver.decodeObjectForKey(KEY_STEP_DATA_BY_DATE).mutableCopy();
-    LastFinishedDay := lUnarchiver.decodeObjectForKey(KEY_LAST_FINISHED_DAY);
-    NSLog('LastFinishedDay %@', LastFinishedDay);
+    Data := lUnarchiver.decodeObjectForKey(KEY_STEP_DATA_BY_DATE):mutableCopy();
+    if assigned(Data) then begin
+      LastFinishedDay := lUnarchiver.decodeObjectForKey(KEY_LAST_FINISHED_DAY);
+      NSLog('LastFinishedDay %@', LastFinishedDay);
+    end;
     lUnarchiver.finishDecoding();
   end;
   
@@ -153,7 +156,6 @@ begin
   end
   else
     NSLog('data loaded from %@', fDataFileName);
-
 end;
 
 method AppDelegate.LoadNewData;
@@ -163,88 +165,96 @@ end;
 
 method AppDelegate.LoadNewDataWithCompletion(aCompletion: block);
 begin
-  NSLog('LoadNewData');
-  if not CMStepCounter.isStepCountingAvailable then begin
-    if assigned(aCompletion) then aCompletion();
-    exit;
-  end;
+  if fLoadingNewData then exit;
+  fLoadingNewData := true;
+  try
 
-  var lCalendar := NSCalendar.currentCalendar;
-  var lNow := NSDate.date;
-  var lUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
-                    NSCalendarUnit.NSMonthCalendarUnit or 
-                    NSCalendarUnit.NSDayCalendarUnit or 
-                    NSCalendarUnit.NSHourCalendarUnit;
-  var lDayUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
-                       NSCalendarUnit.NSMonthCalendarUnit or 
-                       NSCalendarUnit.NSDayCalendarUnit;
-  var lGotoYesterdayComponents := new NSDateComponents;
-  lGotoYesterdayComponents.day := -1;
-
-  var lComponents := lCalendar.components(lUnitFlags) fromDate(lNow);
-  var lComponents4AM := lComponents.copy;
-  lComponents4AM.hour := 4;
-
-  var lMorning := lCalendar.dateFromComponents(lComponents4AM);
-  // NSLog('now: %@', lNow);
-  // NSLog('morning: %@', lMorning);
-
-  if lComponents.hour < daybreak then begin
-    //NSLog('it''s still yesterday');
-    lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
-  end;
-  var lEnd := lNow;
-
-  var lNewLastFinishedDay := lMorning;
-
-  var lCount := 0;
-  while (lCount < 10) do begin
-
-    if assigned(LastFinishedDay) and (lEnd.compare(LastFinishedDay) in [NSComparisonResult.NSOrderedSame, NSComparisonResult.NSOrderedAscending]) then begin
-      //NSLog('stopping');
-      break;
+    NSLog('LoadNewData');
+    if not CMStepCounter.isStepCountingAvailable then begin
+      if assigned(aCompletion) then aCompletion();
+      exit;
     end;
-    //NSLog('getting: %@ - %@ (%@)', lMorning, lEnd, LastFinishedDay);
 
-    var lDayComponents := lCalendar.components(lDayUnitFlags) fromDate(lMorning); 
-    var lDay := lCalendar.dateFromComponents(lDayComponents);
+    var lCalendar := NSCalendar.currentCalendar;
+    var lNow := NSDate.date;
+    var lUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
+                      NSCalendarUnit.NSMonthCalendarUnit or 
+                      NSCalendarUnit.NSDayCalendarUnit or 
+                      NSCalendarUnit.NSHourCalendarUnit;
+    var lDayUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
+                         NSCalendarUnit.NSMonthCalendarUnit or 
+                         NSCalendarUnit.NSDayCalendarUnit;
+    var lGotoYesterdayComponents := new NSDateComponents;
+    lGotoYesterdayComponents.day := -1;
 
-    fCounter.queryStepCountStartingFrom(lMorning) 
-             &to(lEnd)
-             toQueue(fQueue)
-             withHandler(method (numberOfSteps: NSInteger; error: NSError) begin
-                           //NSLog('%@ - %ld', lDay, numberOfSteps);
-                           if (not assigned( Data[lDay])) or (Data[lDay].integerValue < numberOfSteps) then
-                             Data[lDay] := numberOfSteps;
-                           //else
-                             //NSLog('skipped updating %@ (%d)', lDay, numberOfSteps);
-                           dispatch_async(dispatch_get_main_queue(), method begin 
-                                                                       updateStatictics();
-                                                                       NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
+    var lComponents := lCalendar.components(lUnitFlags) fromDate(lNow);
+    var lComponents4AM := lComponents.copy;
+    lComponents4AM.hour := 4;
+
+    var lMorning := lCalendar.dateFromComponents(lComponents4AM);
+    // NSLog('now: %@', lNow);
+    // NSLog('morning: %@', lMorning);
+
+    if lComponents.hour < daybreak then begin
+      //NSLog('it''s still yesterday');
+      lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
+    end;
+    var lEnd := lNow;
+
+    var lNewLastFinishedDay := lMorning;
+
+    var lCount := 0;
+    while (lCount < 10) do begin
+
+      if assigned(LastFinishedDay) and (lEnd.compare(LastFinishedDay) in [NSComparisonResult.NSOrderedSame, NSComparisonResult.NSOrderedAscending]) then begin
+        //NSLog('stopping');
+        break;
+      end;
+      //NSLog('getting: %@ - %@ (%@)', lMorning, lEnd, LastFinishedDay);
+
+      var lDayComponents := lCalendar.components(lDayUnitFlags) fromDate(lMorning); 
+      var lDay := lCalendar.dateFromComponents(lDayComponents);
+
+      fCounter.queryStepCountStartingFrom(lMorning) 
+               &to(lEnd)
+               toQueue(fQueue)
+               withHandler(method (numberOfSteps: NSInteger; error: NSError) begin
+                             //NSLog('%@ - %ld', lDay, numberOfSteps);
+                             if (not assigned( Data[lDay])) or (Data[lDay].integerValue < numberOfSteps) then
+                               Data[lDay] := numberOfSteps;
+                             //else
+                               //NSLog('skipped updating %@ (%d)', lDay, numberOfSteps);
+                             dispatch_async(dispatch_get_main_queue(), method begin 
+                                                                         updateStatictics();
+                                                                         NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
                                                                       
-                                                                       if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then
-                                                                         if assigned(aCompletion) then aCompletion();
-                                                                       save();
-                                                                     end);
-                         end);
+                                                                         if assigned(LastFinishedDay) and lEnd.isEqualToDate(LastFinishedDay) then
+                                                                           if assigned(aCompletion) then aCompletion();
+                                                                         save();
+                                                                       end);
+                           end);
 
-    lEnd := lMorning;
-    lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
+      lEnd := lMorning;
+      lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
 
-    inc(lCount);
+      inc(lCount);
+    end;
+
+    // clean up the last days w/o data
+    {var lKeys := Data.allKeys.sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(true)]);
+    for each k in lKeys do begin
+      if Data[k].integerValue > 0 then break;
+      Data.removeObjectForKey(k);
+    end;
+    NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);}
+
+    LastFinishedDay := lNewLastFinishedDay;
+    //NSLog('set last finished day to %@', LastFinishedDay);
+    save();
+
+  finally
+    fLoadingNewData := false;
   end;
-
-  // clean up the last days w/o data
-  {var lKeys := Data.allKeys.sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(true)]);
-  for each k in lKeys do begin
-    if Data[k].integerValue > 0 then break;
-    Data.removeObjectForKey(k);
-  end;
-  NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);}
-
-  LastFinishedDay := lNewLastFinishedDay;
-  //NSLog('set last finished day to %@', LastFinishedDay);
-  save();
 end;
 
 method AppDelegate.updateStatictics;
@@ -271,6 +281,8 @@ end;
 
 method AppDelegate.save;
 begin
+  if not assigned(Data) then exit;
+
   var lData := new NSMutableData;
   var lArchiver := new NSKeyedArchiver forWritingWithMutableData(lData);
   lArchiver.encodeObject(Data) forKey(KEY_STEP_DATA_BY_DATE);
