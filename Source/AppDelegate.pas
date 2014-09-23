@@ -30,7 +30,7 @@ type
     property daybreak: Int32 := 4; // 4:00 AM
 
     property Data: NSMutableDictionary;
-    property best: NSNumber;
+    property best: NSNumber := 0;
     property weeklyAverage: NSNumber;
     property monthlyAverage: NSNumber;
 

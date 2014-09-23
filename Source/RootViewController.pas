@@ -10,7 +10,7 @@ uses
 
 type
   [IBObject]
-  RootViewController = public class (UITableViewController, IUITableViewDelegate)
+  RootViewController = public class (UITableViewController, IUITableViewDelegate, IUITableViewDataSource)
   private
     fKeys: NSArray;
     method newSteps(notification: NSNotification);
@@ -18,7 +18,6 @@ type
     method refresh(sender: id);
   protected
   public
-    method awakeFromNib; override;
     method viewDidLoad; override;
     method didReceiveMemoryWarning; override;
 
@@ -38,11 +37,6 @@ type
   end;
 
 implementation
-
-method RootViewController.awakeFromNib;
-begin
-  inherited awakeFromNib;
-end;
 
 method RootViewController.viewDidLoad;
 begin
@@ -101,14 +95,13 @@ end;
 
 method RootViewController.tableView(tableView: UITableView) heightForRowAtIndexPath(indexPath: NSIndexPath): CGFloat;
 begin
-  result := inherited;
+  result := 44;//inherited;
   if indexPath.row = 0 then result := result*2.5;
 end;
 
 method RootViewController.tableView(tableView: UITableView) cellForRowAtIndexPath(indexPath: NSIndexPath): UITableViewCell;
 begin
   result := new TPBaseCell withStyle(UITableViewCellStyle.UITableViewCellStyleSubtitle) viewClass(StepsCellView.class);
-
   var lKey := fKeys[indexPath.row];
   //result.textLabel.text := AppDelegate.instance.Data[lKey].stringValue;
 
@@ -116,7 +109,7 @@ begin
   lView.steps := AppDelegate.instance.Data[lKey];
   lView.date := lKey;
   lView.first := indexPath.row = 0;
-  lView.best :=  lView.steps.isEqualToNumber(AppDelegate.instance.best);
+  lView.best := assigned(AppDelegate.instance.best) and lView.steps.isEqualToNumber(AppDelegate.instance.best);
 
   //result.detailTextLabel.text := lKey.description;
 end;

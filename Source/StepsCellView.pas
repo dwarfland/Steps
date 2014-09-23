@@ -89,13 +89,13 @@ begin
     lDayString := lDayString+lDayFormatter.stringFromDate(date);
   
   var lDaySize := lDayString.sizeWithAttributes(lDayAttributes); 
-	var lDayFrame := CGRectMake(5.0, 5.0, lDaySize.width, lDaySize.height);
+  var lDayFrame := CGRectMake(5.0, 5.0, lDaySize.width, lDaySize.height);
   lDayString.drawInRect(lDayFrame) withAttributes(lDayAttributes);
 
   if lOverOneWeek then begin
     var lDayString2 := lFarDateFormatter.stringFromDate(date);
     var lDaySize2 := lDayString2.sizeWithAttributes(lDateAttributes); 
-	  var lDayFrame2 := CGRectMake(lDayFrame.origin.x+lDayFrame.size.width-3, 18.0, lDaySize2.width, lDaySize2.height);
+    var lDayFrame2 := CGRectMake(lDayFrame.origin.x+lDayFrame.size.width-3, 18.0, lDaySize2.width, lDaySize2.height);
     lDayString2.drawInRect(lDayFrame2) withAttributes(lDateAttributes);
   end;
   
@@ -103,7 +103,7 @@ begin
   if best and not first then lStepString := '☆ '+lStepString;
   
   var lStepSize := lStepString.sizeWithAttributes(lStepAttributes); 
-	var lStepFrame := CGRectMake(f.size.width-5-lStepSize.width, 5.0, lStepSize.width, lStepSize.height);
+  var lStepFrame := CGRectMake(f.size.width-5-lStepSize.width, 5.0, lStepSize.width, lStepSize.height);
   lStepString.drawInRect(lStepFrame) withAttributes(lStepAttributes);
 
   if first then begin
@@ -124,12 +124,12 @@ begin
 
     var lWeekly := NSString.stringWithFormat('∅ %@ this week', AppDelegate.instance.weeklyAverage);
     var lWeeklySize := lWeekly.sizeWithAttributes(lDetailsAttributes); 
-	  var lWeeklyFrame := CGRectMake(5.0, lDayFrame.origin.y+lDayFrame.size.height+5.0, lWeeklySize.width, lWeeklySize.height);
+    var lWeeklyFrame := CGRectMake(5.0, lDayFrame.origin.y+lDayFrame.size.height+5.0, lWeeklySize.width, lWeeklySize.height);
     lWeekly.drawInRect(lWeeklyFrame) withAttributes(lDetailsAttributes);
 
     var lMonthly := NSString.stringWithFormat('∅ %@ this month', AppDelegate.instance.monthlyAverage);
     var lMonthlySize := lMonthly.sizeWithAttributes(lDetailsAttributes); 
-	  var lMonthlyFrame := CGRectMake(5.0, lWeeklyFrame.origin.y+lWeeklyFrame.size.height+5.0, lMonthlySize.width, lMonthlySize.height);
+    var lMonthlyFrame := CGRectMake(5.0, lWeeklyFrame.origin.y+lWeeklyFrame.size.height+5.0, lMonthlySize.width, lMonthlySize.height);
     lMonthly.drawInRect(lMonthlyFrame) withAttributes(lDetailsAttributes);
 
     var lEncouragement := '';
@@ -147,7 +147,7 @@ begin
 
     var lEncouragementSize := lEncouragement.sizeWithAttributes(llEncouragementAttributes); 
     var x := (f.size.width-lEncouragementSize.width)/2;
-	  var lEncouragementFrame := CGRectMake(x, lMonthlyFrame.origin.y+lMonthlyFrame.size.height+10.0, lEncouragementSize.width, lEncouragementSize.height);
+    var lEncouragementFrame := CGRectMake(x, lMonthlyFrame.origin.y+lMonthlyFrame.size.height+10.0, lEncouragementSize.width, lEncouragementSize.height);
     lEncouragement.drawInRect(lEncouragementFrame) withAttributes(llEncouragementAttributes);
 
   end;

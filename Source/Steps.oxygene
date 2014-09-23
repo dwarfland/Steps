@@ -30,8 +30,9 @@
         <CodesignCertificateName>iPhone Developer: marc hoffman (K2YTD84U6W)</CodesignCertificateName>
         <CreateIPA>True</CreateIPA>
         <Architecture>armv7;armv7s</Architecture>
-        <ProvisioningProfileName>Steps Develop</ProvisioningProfileName>
-        <ProvisioningProfile>CD234DC3-E6E9-4CF3-B586-0ECBD15D81F7</ProvisioningProfile>
+        <ProvisioningProfileName>Steps Develop 2014</ProvisioningProfileName>
+        <ProvisioningProfile>56405ac9-da1a-4995-93e1-7ff50aa4b0d0</ProvisioningProfile>
+        <GenerateDSym>True</GenerateDSym>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
         <Optimize>true</Optimize>
@@ -72,6 +73,11 @@
         <Content Include="Resources\Info.plist"/>
         <None Include="Resources\App Icons\App-1024.png"/>
         <AppResource Include="Resources\Launch Images\Default-568h@2x.png"/>
+        <None Include="StepsToday\bin\$(Configuration)\iOS\StepsToday.appex">
+            <DestinationFolder>Contents/PlugIns</DestinationFolder>
+        </None>
+        <Storyboard Include="Resources\Launch.storyboard"/>
+        <AppResource Include="Resources\App Icons\App-180.png"/>
     </ItemGroup>
     <ItemGroup>
         <Folder Include="Properties\"/>
