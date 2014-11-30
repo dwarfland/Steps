@@ -63,11 +63,22 @@ begin
 
   var f := frame;
 
-  UIColor.whiteColor.setFill;
-  if best then 
+  if best then begin
     UIColor.colorWithRed(1.0) green(0.9) blue(0.9) alpha(1.0).setFill; 
-  UIRectFill(f);
+    UIRectFill(f);
+  end
+  else begin
+    UIColor.whiteColor.setFill;
+    UIRectFill(f);
+    if AppDelegate.instance.best.intValue > 0 then begin
+      var f2 := f;
+      f2.size.width := steps.floatValue/AppDelegate.instance.best.floatValue * f.size.width;
+      UIColor.colorWithRed(0.97) green(0.97) blue(0.97) alpha(1.0).setFill;
 
+      UIRectFill(f2);
+    end;
+  end;
+  
   var lColor          := UIColor.blackColor;
   var lDayColor := case lComponents.weekday of
       1: UIColor.redColor;
