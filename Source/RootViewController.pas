@@ -107,6 +107,8 @@ begin
 
   var lView := (result as TPBaseCell).view as StepsCellView;
   lView.steps := AppDelegate.instance.Data[lKey];
+  lView.distance := AppDelegate.instance.DistanceData[lKey];
+  lView.debugData := AppDelegate.instance.HealthKitData[lKey];
   lView.date := lKey;
   lView.first := indexPath.row = 0;
   lView.best := assigned(AppDelegate.instance.best) and lView.steps.isEqualToNumber(AppDelegate.instance.best);

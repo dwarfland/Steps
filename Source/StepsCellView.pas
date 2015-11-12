@@ -18,6 +18,8 @@ type
     property first: Boolean;
     property date: NSDate;
     property steps: NSNumber;
+    property distance: NSNumber;
+    property debugData: NSNumber;
     property best: Boolean;
   end;
 
@@ -92,6 +94,8 @@ begin
                                                      forKeys([NSFontAttributeName, NSForegroundColorAttributeName]); 
   var lDateAttributes  := new NSMutableDictionary withObjects([lDateFont, lDayColor]) 
                                                       forKeys([NSFontAttributeName, NSForegroundColorAttributeName]); 
+  var lDetailsAttributes  := new NSMutableDictionary withObjects([lDateFont, UIColor.darkGrayColor]) 
+                                                      forKeys([NSFontAttributeName, NSForegroundColorAttributeName]); 
 
   var lDayString := '';
   if first then 
@@ -116,6 +120,23 @@ begin
   var lStepSize := lStepString.sizeWithAttributes(lStepAttributes); 
   var lStepFrame := CGRectMake(f.size.width-5-lStepSize.width, 5.0, lStepSize.width, lStepSize.height);
   lStepString.drawInRect(lStepFrame) withAttributes(lStepAttributes);
+  
+  if assigned(distance) then begin
+    var lDistanceString := NSString.stringWithFormat("(~%0.1fkm)", distance.doubleValue);
+    var lDistanceSize := lDistanceString.sizeWithAttributes(lDetailsAttributes); 
+    var lDistancePoint :=  if first then
+                             CGPointMake(f.size.width-lDistanceSize.width-5.0, lStepFrame.origin.y+lStepFrame.size.height-10.0)
+                           else
+                             CGPointMake(lStepFrame.origin.x-lDistanceSize.width-5.0, lStepFrame.origin.y+lStepFrame.size.height-lDistanceSize.height-4.0);
+    lDistanceString.drawAtPoint(lDistancePoint) withAttributes(lDetailsAttributes);
+  end;
+
+  if assigned(debugData) then begin
+    var lDebugString := debugData.stringValue;
+    var lDebugSize := lDebugString.sizeWithAttributes(lDetailsAttributes); 
+    var lDebugPoint := CGPointMake(lStepFrame.origin.x-lDebugSize.width-5.0, 5.0);
+    lDebugString.drawAtPoint(lDebugPoint) withAttributes(lDetailsAttributes);
+  end;
 
   if first then begin
 
@@ -127,8 +148,6 @@ begin
     lLinePath.lineWidth := 0.5;
     lLinePath.stroke();
 
-    var lDetailsAttributes  := new NSMutableDictionary withObjects([lDateFont, UIColor.darkGrayColor]) 
-                                                           forKeys([NSFontAttributeName, NSForegroundColorAttributeName]); 
     var llEncouragementFont := UIFont.boldSystemFontOfSize(13);
     var llEncouragementAttributes  := new NSMutableDictionary withObjects([llEncouragementFont, UIColor.colorWithRed(0.0) green(0.0) blue(0.75) alpha(1.0)]) 
                                                                   forKeys([NSFontAttributeName, NSForegroundColorAttributeName]); 

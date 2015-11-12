@@ -2,6 +2,11 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # RemObjects Fire
 Project("{656346D9-4656-40DA-A068-22D5425D4639}") = "Steps", "Steps.oxygene", "{C802B246-D7E1-4E34-8673-595519830CFC}"
+	ProjectSection(ProjectDependencies) = postProject
+		{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303} = {F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}
+	EndProjectSection
+EndProject
+Project("{656346D9-4656-40DA-A068-22D5425D4639}") = "StepsToday", "StepsToday\StepsToday.elements", "{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -13,6 +18,10 @@ Global
 		{C802B246-D7E1-4E34-8673-595519830CFC}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
 		{C802B246-D7E1-4E34-8673-595519830CFC}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
 		{C802B246-D7E1-4E34-8673-595519830CFC}.Release|AnyCPU.Build.0 = Release|AnyCPU
+		{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}.Debug|AnyCPU.ActiveCfg = Debug|AnyCPU
+		{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}.Debug|AnyCPU.Build.0 = Debug|AnyCPU
+		{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}.Release|AnyCPU.ActiveCfg = Release|AnyCPU
+		{F8A82F72-2DEC-4F7D-89E6-DBCC7AB95303}.Release|AnyCPU.Build.0 = Release|AnyCPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

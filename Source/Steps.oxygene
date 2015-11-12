@@ -17,6 +17,9 @@
         <Name>Steps</Name>
         <CreateHeaderFile>False</CreateHeaderFile>
         <BundleIdentifier>com.dwarfland.steps</BundleIdentifier>
+        <ProvisioningProfileName>Steps Develop 2014</ProvisioningProfileName>
+        <ProvisioningProfile>93464934-b806-47ff-b2ff-203ceef23f0b</ProvisioningProfile>
+        <DeploymentTargetVersion>8.0</DeploymentTargetVersion>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Debug' ">
         <Optimize>false</Optimize>
@@ -31,7 +34,7 @@
         <CreateIPA>True</CreateIPA>
         <Architecture>armv7;armv7s</Architecture>
         <ProvisioningProfileName>Steps Develop 2014</ProvisioningProfileName>
-        <ProvisioningProfile>56405ac9-da1a-4995-93e1-7ff50aa4b0d0</ProvisioningProfile>
+        <ProvisioningProfile>93464934-b806-47ff-b2ff-203ceef23f0b</ProvisioningProfile>
         <GenerateDSym>True</GenerateDSym>
     </PropertyGroup>
     <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
@@ -47,6 +50,7 @@
         <CodesignCertificateName>iPhone Distribution: RemObjects Software (24G43Y5373)</CodesignCertificateName>
         <ProvisioningProfileName>Steps App Store</ProvisioningProfileName>
         <ProvisioningProfile>F0256073-C1CE-4FDC-ADBA-A015F96F7D8C</ProvisioningProfile>
+        <GenerateDSym>True</GenerateDSym>
     </PropertyGroup>
     <ItemGroup>
         <Reference Include="CoreGraphics.fx"/>
@@ -59,6 +63,7 @@
         <Reference Include="MapKit.fx"/>
         <Reference Include="UIKit.fx"/>
         <Reference Include="rtl.fx"/>
+        <Reference Include="HealthKit.fx"/>
     </ItemGroup>
     <ItemGroup>
         <Compile Include="AppDelegate.pas"/>
@@ -73,9 +78,9 @@
         <Content Include="Resources\Info.plist"/>
         <None Include="Resources\App Icons\App-1024.png"/>
         <AppResource Include="Resources\Launch Images\Default-568h@2x.png"/>
-        <None Include="StepsToday\bin\$(Configuration)\iOS\StepsToday.appex">
+        <AppResource Include="StepsToday\bin\$(Configuration)\iOS\StepsToday.appex">
             <DestinationFolder>Contents/PlugIns</DestinationFolder>
-        </None>
+        </AppResource>
         <Storyboard Include="Resources\Launch.storyboard"/>
         <AppResource Include="Resources\App Icons\App-180.png"/>
     </ItemGroup>

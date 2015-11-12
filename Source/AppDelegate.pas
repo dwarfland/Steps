@@ -4,6 +4,7 @@ interface
 
 uses
   CoreMotion,
+  HealthKit,
   UIKit;
 
 type
@@ -13,6 +14,7 @@ type
     fQueue: NSOperationQueue := new NSOperationQueue;
     fCounter: CMStepCounter;
     fDataFileName: NSString;
+    fDistanceDataFileName: NSString;
     fLoadingNewData: Boolean;
 
     method StepsQueryHandler(numberOfSteps: NSInteger; error: NSError);
@@ -23,6 +25,7 @@ type
     const FETCH_INTERVAL = 60 * 60 * 12; //twice a day
 
     const KEY_STEP_DATA_BY_DATE = 'StepDataByDate';
+    const KEY_DISTANCE_DATA_BY_DATE = 'DistanceDataByDate';
     const KEY_LAST_FINISHED_DAY = 'DateOfLastFinishedDay';
   public
     property window: UIWindow;
@@ -30,12 +33,17 @@ type
     property daybreak: Int32 := 4; // 4:00 AM
 
     property Data: NSMutableDictionary;
+    property HealthKitData: NSMutableDictionary;
+    property DistanceData: NSMutableDictionary;
     property best: NSNumber := 0;
     property weeklyAverage: NSNumber;
     property monthlyAverage: NSNumber;
 
     property LastFinishedDay: NSDate;
-
+    
+    class property StepCountQuantityType: HKQuantityType := HKQuantityType.quantityTypeForIdentifier(HKQuantityTypeIdentifierStepCount);// lazy;
+    class property DistanceCountQuantityType: HKQuantityType := HKQuantityType.quantityTypeForIdentifier(HKQuantityTypeIdentifierDistanceWalkingRunning); //lazy;
+    class property HealthStore: HKHealthStore := new HKHealthStore(); //lazy;
 
     class property instance: AppDelegate;
 
@@ -54,6 +62,9 @@ type
     method LoadData;
     method LoadNewData;
     method LoadNewDataWithCompletion(aCompletion: block);
+    method LoadNewHealthKitData;
+    method LoadNewHealthKitDataWithCompletion(aCompletion: block);
+    method AuthorizeHealthKitWithCompletion(aCompletion: block(aSuccess: Boolean));
 
   end;
 
@@ -86,20 +97,27 @@ begin
     NSLog('CMStepCounter.isStepCountingAvailable');
     fCounter := new CMStepCounter;
     fCounter.startStepCountingUpdatesToQueue(fQueue) updateOn(1) withHandler(@StepsUpdateHandler); 
-  end;
-
-  if not CMStepCounter.isStepCountingAvailable then begin
-    var lAlert := new UIAlertView withTitle('No M7 Chip') 
-                                      message('We''re sorry, but for for "Steps" to be useful, you need a device with an M7 chip, such as the iPhone 5S.') 
+  end 
+  else begin
+    var lAlert := new UIAlertView withTitle('No M7 or M8 Chip') 
+                                      message('We''re sorry, but for for "Steps" to be useful, you need a device with an M7 or M8 chip, such as the iPhone 5S.') 
                                       &delegate(nil) 
                                       cancelButtonTitle('Ah, that sucks. :(') otherButtonTitles(nil); 
     lAlert.show();
   end;
 
-  async begin
-    LoadData;
-    LoadNewData;
-  end;
+  //async begin
+  AuthorizeHealthKitWithCompletion(method (aSuccess: Boolean) begin
+    dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), -> begin
+      LoadData;
+      if aSuccess then
+        LoadNewHealthKitData();
+      LoadNewData;
+      dispatch_async(dispatch_get_main_queue(), method begin 
+        NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
+      end);
+    end);
+  end);
 
   result := true;
 end;
@@ -123,7 +141,11 @@ end;
 
 method AppDelegate.applicationDidBecomeActive(application: UIApplication);
 begin
-  async LoadNewData();
+  NSLog('applicationDidBecomeActive: loadLoadNewDatanewdata');
+  //async LoadNewData();
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), -> begin
+    {async} LoadNewData();
+  end);
   // Restart any tasks that were paused (or not yet started) while the application was inactive. If the application was previously in the background, optionally refresh the user interface.
 end;
 
@@ -136,31 +158,39 @@ method AppDelegate.LoadData;
 begin
   var lHomeFolder := NSSearchPathForDirectoriesInDomains(NSSearchPathDirectory.NSDocumentDirectory, NSSearchPathDomainMask.NSUserDomainMask, true):objectAtIndex(0);
   fDataFileName := lHomeFolder.stringByAppendingPathComponent('StepData.plist');
+  fDistanceDataFileName := lHomeFolder.stringByAppendingPathComponent('DistanceData.plist');
   if not NSFileManager.defaultManager.createDirectoryAtPath(lHomeFolder) withIntermediateDirectories(true) attributes(nil) error(nil) then
     NSLog('eror crearing documents folder%@', lHomeFolder);
 
-    if NSFileManager.defaultManager.fileExistsAtPath(fDataFileName) then begin
+  if NSFileManager.defaultManager.fileExistsAtPath(fDataFileName) then begin
     var lData := new NSData withContentsOfFile(fDataFileName);
     var lUnarchiver := new NSKeyedUnarchiver forReadingWithData(lData);
+
     Data := lUnarchiver.decodeObjectForKey(KEY_STEP_DATA_BY_DATE):mutableCopy();
+    if not assigned(Data) then
+      Data := new NSMutableDictionary;
+
+    DistanceData := lUnarchiver.decodeObjectForKey(KEY_DISTANCE_DATA_BY_DATE):mutableCopy();
+    if not assigned(DistanceData) then
+      DistanceData := new NSMutableDictionary;
+
     if assigned(Data) then begin
       LastFinishedDay := lUnarchiver.decodeObjectForKey(KEY_LAST_FINISHED_DAY);
       NSLog('LastFinishedDay %@', LastFinishedDay);
     end;
+
     lUnarchiver.finishDecoding();
   end;
-  
-  if not assigned(Data) then begin
-    NSLog('no cached data found in %@', fDataFileName);
-    Data := new NSMutableDictionary
-  end
-  else
-    NSLog('data loaded from %@', fDataFileName);
 end;
 
 method AppDelegate.LoadNewData;
 begin
   LoadNewDataWithCompletion(nil);
+end;
+
+method AppDelegate.LoadNewHealthKitData;
+begin
+  LoadNewHealthKitDataWithCompletion(nil);
 end;
 
 method AppDelegate.LoadNewDataWithCompletion(aCompletion: block);
@@ -257,6 +287,152 @@ begin
   end;
 end;
 
+method AppDelegate.AuthorizeHealthKitWithCompletion(aCompletion: block(aSuccess: Boolean));
+begin
+  var readTypes := NSSet.setWithObjects(StepCountQuantityType, DistanceCountQuantityType, nil);
+  HealthStore.requestAuthorizationToShareTypes(NSSet.set) readTypes(readTypes) completion( method (aSuccess: Boolean; aError: NSError) begin
+    if not aSuccess then 
+      NSLog('Error accessing Health Kit: %@', aError);
+    if assigned(aCompletion) then aCompletion(aSuccess);
+  end);  
+end;
+
+method AppDelegate.LoadNewHealthKitDataWithCompletion(aCompletion: block);
+begin
+  //if fLoadingNewData then exit;
+  //fLoadingNewData := true;
+  try
+
+    NSLog('LoadNewHealthKitData');
+
+    var lCalendar := NSCalendar.currentCalendar;
+    var lNow := NSDate.date;
+    var lUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
+                      NSCalendarUnit.NSMonthCalendarUnit or 
+                      NSCalendarUnit.NSDayCalendarUnit or 
+                      NSCalendarUnit.NSHourCalendarUnit;
+    var lDayUnitFlags := NSCalendarUnit.NSYearCalendarUnit or 
+                         NSCalendarUnit.NSMonthCalendarUnit or 
+                         NSCalendarUnit.NSDayCalendarUnit;
+    var lGotoYesterdayComponents := new NSDateComponents;
+    lGotoYesterdayComponents.day := -1;
+
+    var lComponents := lCalendar.components(lUnitFlags) fromDate(lNow);
+    var lComponents4AM := lComponents.copy;
+    lComponents4AM.hour := 4;
+
+    var lMorning := lCalendar.dateFromComponents(lComponents4AM);
+
+    if lComponents.hour < daybreak then begin
+      NSLog('it''s still yesterday');
+      lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
+    end;
+    var lEnd := lNow;
+
+    var lNewLastFinishedDay := lMorning;
+
+    HealthKitData := new NSMutableDictionary();
+
+    var lCount := 0;
+    while (lCount < 10) do begin
+
+      var lCouldBeDone := assigned(LastFinishedDay) and (lEnd.compare(LastFinishedDay) in [NSComparisonResult.NSOrderedSame, NSComparisonResult.NSOrderedAscending]);
+      NSLog('getting: %@ - %@ (%@)', lMorning, lEnd, LastFinishedDay);
+
+      var lDayComponents := lCalendar.components(lDayUnitFlags) fromDate(lMorning); 
+      var lDay := lCalendar.dateFromComponents(lDayComponents);
+      var lPredicate := HKQuery.predicateForSamplesWithStartDate(lMorning) endDate(lEnd) options(HKQueryOptions.HKQueryOptionNone);
+      
+      if lCouldBeDone and assigned(Data[lDay]) and assigned(HealthKitData[lDay]) then begin
+        NSLog('stopping');
+        break;
+      end;
+
+      if not assigned(Data[lDay]) or not lCouldBeDone then begin
+        var q := new HKSampleQuery withSampleType(StepCountQuantityType) 
+                                      predicate(lPredicate) 
+                                      limit(HKObjectQueryNoLimit) 
+                                      sortDescriptors(nil) 
+                                      resultsHandler( method (aQuery: HKSampleQuery; aResults: NSArray; aError: NSError) begin
+          if aResults.count > 0 then begin
+            var lSteps := 0;
+            for each s in aResults do begin
+              lSteps := lSteps+Integer(s.quantity.doubleValueForUnit(HKUnit.countUnit))
+            end;
+            NSLog('Steps: %ld', lSteps);
+            
+            if (not assigned(HealthKitData[lDay])) or (HealthKitData[lDay].integerValue < lSteps) then begin
+              HealthKitData[lDay] := lSteps;
+              dispatch_async(dispatch_get_main_queue(), method begin 
+                //updateStatictics();
+                NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
+                save();
+              end);
+            end;
+            
+          end;
+        end);
+        HealthStore.executeQuery(q);
+      end
+      else begin
+        NSLog('skipping getting steps');
+      end;
+
+      if not assigned(HealthKitData[lDay]) or not lCouldBeDone then begin
+        var q := new HKSampleQuery withSampleType(DistanceCountQuantityType) 
+                                      predicate(lPredicate) 
+                                      limit(HKObjectQueryNoLimit) 
+                                      sortDescriptors(nil) 
+                                      resultsHandler( method (aQuery: HKSampleQuery; aResults: NSArray; aError: NSError) begin
+          if aResults.count > 0 then begin
+            NSLog('got %ld walking distance info records', aResults.count);
+            var lDistance := 0.0;
+            for each s in aResults do begin
+              lDistance := lDistance+s.quantity.doubleValueForUnit(HKUnit.meterUnitWithMetricPrefix(HKMetricPrefix.Kilo))
+            end;
+            NSLog('Distance: %f', lDistance);
+            
+            if (not assigned(DistanceData[lDay])) or (DistanceData[lDay].doubleValue < lDistance) then begin
+              DistanceData[lDay] := lDistance;
+              dispatch_async(dispatch_get_main_queue(), method begin 
+                //updateStatictics();
+                NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);
+                save();
+              end);
+            end;
+            
+          end;
+        end);
+        HealthStore.executeQuery(q);
+      end
+      else begin
+        NSLog('skipping getting distance');
+      end;
+
+      lEnd := lMorning;
+      lMorning := lCalendar.dateByAddingComponents(lGotoYesterdayComponents) toDate(lMorning) options(0); 
+
+      inc(lCount);
+      NSLog('count: %ld', lCount);
+    end;
+
+    // clean up the last days w/o data
+    {var lKeys := Data.allKeys.sortedArrayUsingDescriptors([NSSortDescriptor.alloc.initWithKey('self') ascending(true)]);
+    for each k in lKeys do begin
+      if Data[k].integerValue > 0 then break;
+      Data.removeObjectForKey(k);
+    end;
+    NSNotificationCenter.defaultCenter.postNotificationName(NEW_STEPS_NOTIFICATION) object(self);}
+
+    //LastFinishedDay := lNewLastFinishedDay;
+    //NSLog('set last finished day to %@', LastFinishedDay);
+    //save();
+
+  finally
+    //fLoadingNewData := false;
+  end;
+end;
+
 method AppDelegate.updateStatictics;
 begin
   best := Data.allValues.valueForKeyPath('@max.self');
@@ -281,19 +457,20 @@ end;
 
 method AppDelegate.save;
 begin
-  if not assigned(Data) then exit;
-
-  var lData := new NSMutableData;
-  var lArchiver := new NSKeyedArchiver forWritingWithMutableData(lData);
-  lArchiver.encodeObject(Data) forKey(KEY_STEP_DATA_BY_DATE);
-  if assigned(LastFinishedDay) then
-    lArchiver.encodeObject(LastFinishedDay) forKey(KEY_LAST_FINISHED_DAY);
-  lArchiver.finishEncoding();
-
-  if lData.writeToFile(fDataFileName) atomically(YES) then
-    NSLog('data saved to %@', fDataFileName)
-  else
-    NSLog('error saving data to %@', fDataFileName)
+  if assigned(Data) then begin
+    var lData := new NSMutableData;
+    var lArchiver := new NSKeyedArchiver forWritingWithMutableData(lData);
+    lArchiver.encodeObject(Data) forKey(KEY_STEP_DATA_BY_DATE);
+    lArchiver.encodeObject(DistanceData) forKey(KEY_DISTANCE_DATA_BY_DATE);
+    if assigned(LastFinishedDay) then
+      lArchiver.encodeObject(LastFinishedDay) forKey(KEY_LAST_FINISHED_DAY);
+    lArchiver.finishEncoding();
+  
+    if lData.writeToFile(fDataFileName) atomically(YES) then
+      NSLog('data saved to %@', fDataFileName)
+    else
+      NSLog('error saving data to %@', fDataFileName)
+  end;
 end;
 
 method AppDelegate.StepsQueryHandler(numberOfSteps: NSInteger; error: NSError);
@@ -308,7 +485,9 @@ end;
 
 method AppDelegate.application(application: UIApplication) performFetchWithCompletionHandler(completionHandler: block (fetchResult: UIBackgroundFetchResult));
 begin
-  async LoadNewDataWithCompletion(-> completionHandler(UIBackgroundFetchResult.UIBackgroundFetchResultNewData));
+  dispatch_async(dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0), -> begin
+    {async} LoadNewDataWithCompletion(-> completionHandler(UIBackgroundFetchResult.UIBackgroundFetchResultNewData));
+  end);
 end;
 
 end.
